@@ -1,0 +1,70 @@
+{
+  "name": "deid",
+  "version": "0.1.0",
+  "description": "PHI de-identification for TypeScript - detect, redact, and pseudonymize the HIPAA Safe Harbor identifiers in clinical text with exact offsets. Zero dependencies; optional on-device NER.",
+  "keywords": [
+    "phi",
+    "hipaa",
+    "de-identification",
+    "deidentification",
+    "redaction",
+    "pseudonymization",
+    "safe-harbor",
+    "clinical-text",
+    "healthcare",
+    "medical",
+    "privacy",
+    "pii"
+  ],
+  "license": "MIT",
+  "author": "Muzaffar Qosimov",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qwertymuzaffar/deid.git"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./transformers": {
+      "types": "./dist/transformers.d.ts",
+      "import": "./dist/transformers.js",
+      "require": "./dist/transformers.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "bench": "npm run build && node scripts/bench.mjs",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "peerDependencies": {
+    "@huggingface/transformers": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@huggingface/transformers": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@huggingface/transformers": "^4.2.0",
+    "@vitest/coverage-v8": "4.1.11",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^4.0.8"
+  }
+}
