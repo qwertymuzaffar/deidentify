@@ -1,23 +1,23 @@
-# deid
+# deidentify
 
-[![npm version](https://img.shields.io/npm/v/@qwertymuzaffar/deid)](https://www.npmjs.com/package/@qwertymuzaffar/deid)
+[![npm version](https://img.shields.io/npm/v/deidentify)](https://www.npmjs.com/package/deidentify)
 [![CI](https://github.com/qwertymuzaffar/deid/actions/workflows/ci.yml/badge.svg)](https://github.com/qwertymuzaffar/deid/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 PHI de-identification for TypeScript: **detect, redact, and pseudonymize** the HIPAA Safe Harbor identifiers in clinical text - with exact source offsets, zero dependencies, and an optional **on-device NER layer** so protected text never has to leave your process to be cleaned.
 
-The gateway problem of every healthcare-AI feature is the same: you cannot send a note to an LLM API, an embedding model, or a search index until the identifiers are gone. `deid` is that step, for Node, browsers, and edge runtimes.
+The gateway problem of every healthcare-AI feature is the same: you cannot send a note to an LLM API, an embedding model, or a search index until the identifiers are gone. `deidentify` is that step, for Node, browsers, and edge runtimes.
 
 ## Install
 
 ```bash
-npm i @qwertymuzaffar/deid
+npm i deidentify
 ```
 
 ## Quick start
 
 ```ts
-import { redact } from '@qwertymuzaffar/deid';
+import { redact } from 'deidentify';
 
 const { text } = redact(`Patient: John Smith  MRN: 4482913  DOB: 03/14/1951
 Seen by Dr. Maria Lopez on 2024-02-05. Phone (703) 555-0142.`);
@@ -29,7 +29,7 @@ Seen by Dr. Maria Lopez on 2024-02-05. Phone (703) 555-0142.`);
 Or keep the note readable and re-identifiable with consistent surrogates:
 
 ```ts
-import { pseudonymize } from '@qwertymuzaffar/deid';
+import { pseudonymize } from 'deidentify';
 
 const { text, map, dateShiftDays } = pseudonymize(note);
 // "Patient: Alex Morgan  MRN: MRN-0001  DOB: 05/02/1951 ..."
@@ -41,7 +41,7 @@ const { text, map, dateShiftDays } = pseudonymize(note);
 Or just find the spans:
 
 ```ts
-import { detectPhi } from '@qwertymuzaffar/deid';
+import { detectPhi } from 'deidentify';
 
 for (const span of detectPhi(note)) {
   console.log(span.category, span.text, span.start, span.end, span.confidence);
@@ -73,8 +73,8 @@ npm i @huggingface/transformers   # optional peer dependency
 ```
 
 ```ts
-import { redactAsync } from '@qwertymuzaffar/deid';
-import { createTransformersNer } from '@qwertymuzaffar/deid/transformers';
+import { redactAsync } from 'deidentify';
+import { createTransformersNer } from 'deidentify/transformers';
 
 const ner = createTransformersNer(); // Xenova/bert-base-NER, ~110 MB once, then cached
 const { text } = await redactAsync(note, ner);
@@ -119,7 +119,7 @@ Overlapping candidates resolve by confidence, then length; touching spans of one
 
 ## What this is not
 
-`deid` is engineering infrastructure for administrative and documentation workflows - preparing text for search, summarization, or LLM features. It is **not** a compliance certification, not clinical decision support, and no automated de-identifier reaches 100% recall on real-world text. Use it as one layer of a HIPAA program with human review where the risk warrants it, exactly as you would with Presidio or philter.
+`deidentify` is engineering infrastructure for administrative and documentation workflows - preparing text for search, summarization, or LLM features. It is **not** a compliance certification, not clinical decision support, and no automated de-identifier reaches 100% recall on real-world text. Use it as one layer of a HIPAA program with human review where the risk warrants it, exactly as you would with Presidio or philter.
 
 ## Roadmap
 
