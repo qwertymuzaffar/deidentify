@@ -34,7 +34,10 @@ const DEFAULT_LABELS: Record<string, PhiCategory> = { PER: 'name', LOC: 'address
 export function createTransformersNer(options: TransformersNerOptions = {}): NerFn {
   const model = options.model ?? 'Xenova/bert-base-NER';
   const minScore = options.minScore ?? 0.6;
-  const labels = { ...DEFAULT_LABELS, ...options.labelMap };
+  const labels: Record<string, PhiCategory> = { ...DEFAULT_LABELS };
+  for (const [label, category] of Object.entries(options.labelMap ?? {})) {
+    if (category) labels[label] = category;
+  }
   let pipe: Promise<(text: string) => Promise<RawEntity[]>> | null = null;
 
   const load = () => {
