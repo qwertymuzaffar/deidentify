@@ -1,6 +1,6 @@
 # deid
 
-[![npm version](https://img.shields.io/npm/v/deid)](https://www.npmjs.com/package/deid)
+[![npm version](https://img.shields.io/npm/v/@qwertymuzaffar/deid)](https://www.npmjs.com/package/@qwertymuzaffar/deid)
 [![CI](https://github.com/qwertymuzaffar/deid/actions/workflows/ci.yml/badge.svg)](https://github.com/qwertymuzaffar/deid/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -11,13 +11,13 @@ The gateway problem of every healthcare-AI feature is the same: you cannot send 
 ## Install
 
 ```bash
-npm i deid
+npm i @qwertymuzaffar/deid
 ```
 
 ## Quick start
 
 ```ts
-import { redact } from 'deid';
+import { redact } from '@qwertymuzaffar/deid';
 
 const { text } = redact(`Patient: John Smith  MRN: 4482913  DOB: 03/14/1951
 Seen by Dr. Maria Lopez on 2024-02-05. Phone (703) 555-0142.`);
@@ -29,7 +29,7 @@ Seen by Dr. Maria Lopez on 2024-02-05. Phone (703) 555-0142.`);
 Or keep the note readable and re-identifiable with consistent surrogates:
 
 ```ts
-import { pseudonymize } from 'deid';
+import { pseudonymize } from '@qwertymuzaffar/deid';
 
 const { text, map, dateShiftDays } = pseudonymize(note);
 // "Patient: Alex Morgan  MRN: MRN-0001  DOB: 05/02/1951 ..."
@@ -41,7 +41,7 @@ const { text, map, dateShiftDays } = pseudonymize(note);
 Or just find the spans:
 
 ```ts
-import { detectPhi } from 'deid';
+import { detectPhi } from '@qwertymuzaffar/deid';
 
 for (const span of detectPhi(note)) {
   console.log(span.category, span.text, span.start, span.end, span.confidence);
@@ -73,8 +73,8 @@ npm i @huggingface/transformers   # optional peer dependency
 ```
 
 ```ts
-import { redactAsync } from 'deid';
-import { createTransformersNer } from 'deid/transformers';
+import { redactAsync } from '@qwertymuzaffar/deid';
+import { createTransformersNer } from '@qwertymuzaffar/deid/transformers';
 
 const ner = createTransformersNer(); // Xenova/bert-base-NER, ~110 MB once, then cached
 const { text } = await redactAsync(note, ner);

@@ -1,5 +1,5 @@
 {
-  "name": "deid",
+  "name": "@qwertymuzaffar/deid",
   "version": "0.1.0",
   "description": "PHI de-identification for TypeScript - detect, redact, and pseudonymize the HIPAA Safe Harbor identifiers in clinical text with exact offsets. Zero dependencies; optional on-device NER.",
   "keywords": [
@@ -66,5 +66,8 @@
     "tsup": "^8.5.0",
     "typescript": "^5.9.2",
     "vitest": "^4.0.8"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
