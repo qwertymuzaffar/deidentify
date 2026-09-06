@@ -50,7 +50,10 @@
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "bench": "npm run build && node scripts/bench.mjs",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build && npm test",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "npm run build && changeset publish"
   },
   "peerDependencies": {
     "@huggingface/transformers": "^4.0.0"
@@ -61,6 +64,7 @@
     }
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.2",
     "@huggingface/transformers": "^4.2.0",
     "@vitest/coverage-v8": "4.1.11",
     "tsup": "^8.5.0",
