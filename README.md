@@ -1,7 +1,7 @@
 # deidentify
 
 [![npm version](https://img.shields.io/npm/v/deidentify)](https://www.npmjs.com/package/deidentify)
-[![CI](https://github.com/qwertymuzaffar/deid/actions/workflows/ci.yml/badge.svg)](https://github.com/qwertymuzaffar/deid/actions/workflows/ci.yml)
+[![CI](https://github.com/qwertymuzaffar/deidentify/actions/workflows/ci.yml/badge.svg)](https://github.com/qwertymuzaffar/deidentify/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 PHI de-identification for TypeScript: **detect, redact, and pseudonymize** the HIPAA Safe Harbor identifiers in clinical text - with exact source offsets, zero dependencies, and an optional **on-device NER layer** so protected text never has to leave your process to be cleaned.
