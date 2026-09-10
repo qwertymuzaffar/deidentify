@@ -53,7 +53,8 @@
     "prepublishOnly": "npm run build && npm test",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "npm run build && changeset publish"
+    "release": "npm run build && changeset publish",
+    "build:demo": "node scripts/build-demo.mjs"
   },
   "peerDependencies": {
     "@huggingface/transformers": "^4.0.0"

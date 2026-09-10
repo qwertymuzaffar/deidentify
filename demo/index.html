@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>deidentify - PHI de-identification in the browser</title>
+    <meta name="description" content="Detect, redact and pseudonymize the HIPAA Safe Harbor identifiers in a clinical note, in your browser, with an optional on-device NER model on WebGPU. Nothing is uploaded." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%231d4ed8'/%3E%3Crect x='9' y='14' width='14' height='4' rx='2' fill='%23fff'/%3E%3C/svg%3E" />
+    <script type="importmap">
+      { "imports": { "@huggingface/transformers": "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0/dist/transformers.web.min.js" } }
+    </script>
+    <style>
+      :root { --ink: #1e293b; --muted: #64748b; --rule: #e2e8f0; --bg: #f8fafc; --card: #fff; --accent: #1d4ed8; --bad: #b91c1c; --good: #15803d; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.5; }
+      header { background: #0b1220; color: #e2e8f0; padding: 28px 24px; }
+      header h1 { margin: 0 0 6px; font-size: 26px; }
+      header p { margin: 0; color: #94a3b8; max-width: 72ch; }
+      header a { color: #93c5fd; }
+      main { max-width: 1180px; margin: 0 auto; padding: 20px 24px 60px; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+      .card { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; }
+      .card h2 { margin: 0 0 8px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+      textarea { width: 100%; min-height: 260px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid var(--rule); border-radius: 8px; padding: 8px; resize: vertical; }
+      .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
+      button { font: inherit; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--rule); background: #fff; color: var(--ink); cursor: pointer; }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      button:hover { filter: brightness(0.97); }
+      button:disabled { opacity: 0.6; cursor: wait; }
+      label { font-size: 13px; color: var(--muted); }
+      .status { font-size: 13px; color: var(--muted); margin-left: auto; }
+      .badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #eff6ff; color: var(--accent); border: 1px solid #bfdbfe; }
+      pre { white-space: pre-wrap; word-break: break-word; font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0; }
+      mark.phi { padding: 0 3px; border-radius: 4px; background: #fef08a; }
+      mark.phi[data-category="name"] { background: #bfdbfe; }
+      mark.phi[data-category="date"], mark.phi[data-category="age"] { background: #bbf7d0; }
+      mark.phi[data-category="address"], mark.phi[data-category="zip"] { background: #fed7aa; }
+      mark.phi[data-category="phone"], mark.phi[data-category="fax"], mark.phi[data-category="email"], mark.phi[data-category="url"], mark.phi[data-category="ip"] { background: #e9d5ff; }
+      mark.phi[data-source="ner"] { outline: 2px dashed #1d4ed8; outline-offset: 1px; }
+      table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 8px 0; display: block; overflow-x: auto; }
+      th, td { border: 1px solid var(--rule); padding: 5px 8px; text-align: left; white-space: nowrap; }
+      th { background: #f1f5f9; }
+      td code { background: #f1f5f9; padding: 1px 4px; border-radius: 4px; font-size: 12px; }
+      .hint { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+      .error { color: var(--bad); }
+      footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px; }
+      footer a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>deidentify</h1>
+      <p>
+        Detect, redact and pseudonymize the HIPAA Safe Harbor identifiers in a clinical note, entirely in your browser. The rules run instantly; the optional NER layer downloads a small model once and runs it on WebGPU when the browser has it, otherwise in WebAssembly. Nothing leaves this page.
+        <a href="https://github.com/qwertymuzaffar/deidentify">GitHub</a> · <a href="https://www.npmjs.com/package/deidentify">npm</a>
+      </p>
+    </header>
+    <main>
+      <section class="card">
+        <h2>Note</h2>
+        <textarea id="note" spellcheck="false"></textarea>
+        <div class="row">
+          <button id="sample">Load sample note</button>
+          <label><input type="radio" name="mode" id="modeRules" checked /> Rules only</label>
+          <label><input type="radio" name="mode" id="modeNer" /> Rules + on-device NER (Xenova/bert-base-NER, about 110 MB once, then cached)</label>
+          <span class="badge" id="device">probing device...</span>
+          <button class="primary" id="run">De-identify</button>
+          <span class="status" id="status">Ready.</span>
+        </div>
+        <p class="hint">The sample is synthetic. Unlabeled names in prose ("his daughter Emily Smith") and place names are what the rules miss and the NER layer adds - NER spans get a dashed outline.</p>
+      </section>
+      <div class="grid" style="margin-top: 16px">
+        <section class="card">
+          <h2>Detections</h2>
+          <pre id="highlighted"></pre>
+          <p class="hint">Hover a span for category, source, confidence and offsets. Every span satisfies <code>note.slice(start, end) === text</code>.</p>
+        </section>
+        <section class="card">
+          <h2>Redacted</h2>
+          <pre id="redacted"></pre>
+        </section>
+        <section class="card">
+          <h2>Pseudonymized</h2>
+          <pre id="pseudonymized"></pre>
+          <p class="hint" id="shift"></p>
+        </section>
+        <section class="card">
+          <h2>Spans</h2>
+          <div id="spans"></div>
+        </section>
+      </div>
+    </main>
+    <footer>Built with <a href="https://www.npmjs.com/package/deidentify">deidentify</a>, zero dependencies in the core, MIT.</footer>
+    <script type="module">
+      import { detectPhiAsync, redactAsync, pseudonymizeAsync } from './deidentify.js';
+
+      const SAMPLE = `Patient: John Smith   MRN: 4482913   DOB: 03/14/1951
+Phone: (703) 555-0142   Email: jsmith@example.org
+Address: 42 Maple Avenue, Apt 3B, Fairfax, VA 22030
+
+Subjective:
+A 92-year-old man reports intermittent chest pain since 2024-02-03. Spoke with his daughter Emily Smith, who drove him in from Springfield.
+
+Objective:
+BP 132/84, HR 78, afebrile. ECG unremarkable.
+
+Assessment and Plan:
+Likely GERD. Start omeprazole 20 mg daily. Follow up March 8, 2024 with Dr. Maria Lopez. Portal: https://portal.example.org/visit/9931
+
+Signed by: Robert Chen, MD on 2024-02-05`;
+
+      const byId = (id) => document.getElementById(id);
+      const setStatus = (text, isError = false) => {
+        byId('status').textContent = text;
+        byId('status').classList.toggle('error', isError);
+      };
+      const escape = (text) => text.replace(/[&<>"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[character]);
+
+      async function detectDevice() {
+        if (!navigator.gpu) return 'wasm';
+        try {
+          const adapter = await navigator.gpu.requestAdapter();
+          return adapter ? 'webgpu' : 'wasm';
+        } catch {
+          return 'wasm';
+        }
+      }
+      const devicePromise = detectDevice().then((device) => {
+        byId('device').textContent = device === 'webgpu' ? 'WebGPU available' : 'WebAssembly (no WebGPU)';
+        return device;
+      });
+
+      let nerPromise = null;
+      function loadNer() {
+        nerPromise ??= (async () => {
+          const device = await devicePromise;
+          const { createTransformersNer } = await import('./deidentify-transformers.js');
+          const files = new Map();
+          const onProgress = (event) => {
+            if (event.status === 'progress' && event.file) files.set(event.file, event.progress ?? 0);
+            if (event.status === 'progress') {
+              const total = [...files.values()].reduce((sum, value) => sum + value, 0) / Math.max(files.size, 1);
+              setStatus(`Downloading the NER model: ${Math.round(total)}%`);
+            }
+            if (event.status === 'ready') setStatus(`NER model ready on ${device}.`);
+          };
+          return createTransformersNer({ pipelineOptions: { device, progress_callback: onProgress } });
+        })();
+        return nerPromise;
+      }
+
+      function highlight(note, spans) {
+        let html = '';
+        let cursor = 0;
+        for (const span of spans) {
+          html += escape(note.slice(cursor, span.start));
+          const title = `${span.category} · ${span.source} · ${span.confidence.toFixed(2)} · [${span.start}, ${span.end})`;
+          html += `<mark class="phi" data-category="${span.category}" data-source="${span.source === 'ner' ? 'ner' : 'rule'}" title="${title}">${escape(span.text)}</mark>`;
+          cursor = span.end;
+        }
+        return html + escape(note.slice(cursor));
+      }
+
+      function spansTable(spans) {
+        if (spans.length === 0) return '<p class="hint">No identifiers found.</p>';
+        const rows = spans.map(
+          (span) =>
+            `<tr><td>${span.category}</td><td><code>${escape(span.text)}</code></td><td>${span.start}</td><td>${span.end}</td><td>${span.confidence.toFixed(2)}</td><td>${escape(span.source)}</td></tr>`,
+        );
+        return `<table><thead><tr><th>Category</th><th>Text</th><th>Start</th><th>End</th><th>Confidence</th><th>Source</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+      }
+
+      async function run() {
+        const note = byId('note').value;
+        const useNer = byId('modeNer').checked;
+        byId('run').disabled = true;
+        const started = performance.now();
+        try {
+          let recognizer = async () => [];
+          let device = 'rules';
+          if (useNer) {
+            setStatus('Loading the NER model (the first run downloads it, later runs use the cache)...');
+            const ner = await loadNer();
+            device = await devicePromise;
+            const modelSpans = await ner(note); // run the model once, reuse its spans for every step below
+            recognizer = async () => modelSpans;
+          }
+          const spans = await detectPhiAsync(note, recognizer);
+          const redacted = await redactAsync(note, recognizer);
+          const pseudonymized = await pseudonymizeAsync(note, recognizer);
+          byId('highlighted').innerHTML = highlight(note, spans);
+          byId('redacted').textContent = redacted.text;
+          byId('pseudonymized').textContent = pseudonymized.text;
+          byId('shift').textContent = `Dates shifted by ${pseudonymized.dateShiftDays} days; the same value maps to the same surrogate throughout.`;
+          byId('spans').innerHTML = spansTable(spans);
+          const elapsed = Math.round(performance.now() - started);
+          setStatus(`${spans.length} spans in ${elapsed} ms (${useNer ? `rules + NER on ${device}` : 'rules only'}).`);
+        } catch (error) {
+          setStatus(`Failed: ${error.message}`, true);
+        } finally {
+          byId('run').disabled = false;
+        }
+      }
+
+      byId('sample').onclick = () => {
+        byId('note').value = SAMPLE;
+        run();
+      };
+      byId('run').onclick = run;
+      byId('note').value = SAMPLE;
+      // ?ner in the URL starts in NER mode, for deep links and for scripted checks
+      if (new URLSearchParams(location.search).has('ner')) byId('modeNer').checked = true;
+      run();
+    </script>
+  </body>
+</html>

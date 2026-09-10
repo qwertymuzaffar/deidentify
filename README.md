@@ -108,6 +108,10 @@ const { text } = await redactAsync(note, ner);
 
 The model runs locally through Transformers.js (WASM/WebGPU in the browser, ONNX Runtime in Node). Nothing is uploaded anywhere. `PER` maps to `name` and `LOC` to `address`; override with `labelMap`. Any async `(text) => PhiSpan[]` works as the `ner` argument, so a hosted model or a different library plugs in the same way.
 
+## Browser demo
+
+The demo at https://qwertymuzaffar.github.io/deidentify/ runs the rules and, on request, the NER model in your browser - on WebGPU when the browser has it, otherwise in WebAssembly - and shows the detections with offsets next to the redacted and pseudonymized note. Nothing is uploaded anywhere.
+
 ## Benchmark
 
 `npm run bench` - 500 synthetic clinical-style notes with known identifier insertions (no real patient data), including unlabeled name mentions in prose:
@@ -172,10 +176,6 @@ Overlapping candidates resolve by confidence, then length; touching spans of one
 ## What this is not
 
 `deidentify` is engineering infrastructure for administrative and documentation workflows - preparing text for search, summarization, or LLM features. It is **not** a compliance certification, not clinical decision support, and no automated de-identifier reaches 100% recall on real-world text. Use it as one layer of a HIPAA program with human review where the risk warrants it, exactly as you would with Presidio or philter.
-
-## Roadmap
-
-- Browser demo with the NER layer running on WebGPU
 
 ## License
 
