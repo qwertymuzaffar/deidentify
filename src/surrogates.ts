@@ -16,46 +16,92 @@ MONTH_INDEX['sept'] = 8;
 
 const pad = (n: number, width = 2) => String(n).padStart(width, '0');
 
+interface DateFormat {
+  pattern: RegExp;
+  /** Capture group of each part; a format without a day shifts from the 15th. */
+  groups: { month: number; day?: number; year: number };
+  /** Writes the shifted date in the style of the original match. */
+  render(shifted: Date, match: RegExpMatchArray): string;
+}
+
+/** A family of formats and how its month capture becomes a 0-based month index. */
+interface DateFamily {
+  formats: readonly DateFormat[];
+  monthIndex(monthText: string): number | undefined;
+}
+
+const ORDINAL = '(?:st|nd|rd|th)?';
+
+const NUMERIC_FORMATS: readonly DateFormat[] = [
+  {
+    // 2024-03-05
+    pattern: /^(\d{4})-(\d{2})-(\d{2})$/,
+    groups: { year: 1, month: 2, day: 3 },
+    render: (shifted) => `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`,
+  },
+  {
+    // 3/5/2024, 03-05-24: the separator, the zero padding and the year width are kept
+    pattern: /^(\d{1,2})([/-])(\d{1,2})\2(\d{2}|\d{4})$/,
+    groups: { month: 1, day: 3, year: 4 },
+    render: (shifted, match) => {
+      const separator = match[2];
+      const keepPad = match[1].length === 2;
+      const month = keepPad ? pad(shifted.getUTCMonth() + 1) : String(shifted.getUTCMonth() + 1);
+      const day = keepPad ? pad(shifted.getUTCDate()) : String(shifted.getUTCDate());
+      const year = match[4].length === 2 ? pad(shifted.getUTCFullYear() % 100) : String(shifted.getUTCFullYear());
+      return `${month}${separator}${day}${separator}${year}`;
+    },
+  },
+];
+
+// March 5, 2024 / Mar. 5th 2024
+const monthDayYear = (shifted: Date, match: RegExpMatchArray): string =>
+  `${monthLike(match[1], shifted.getUTCMonth())} ${shifted.getUTCDate()}, ${shifted.getUTCFullYear()}`;
+// 5 March 2024 / 5th Mar. 2024
+const dayMonthYear = (shifted: Date, match: RegExpMatchArray): string =>
+  `${shifted.getUTCDate()} ${monthLike(match[2], shifted.getUTCMonth())} ${shifted.getUTCFullYear()}`;
+// March 2024: a month is a Safe Harbor date element on its own
+const monthYear = (shifted: Date, match: RegExpMatchArray): string =>
+  `${monthLike(match[1], shifted.getUTCMonth())} ${shifted.getUTCFullYear()}`;
+
+const NAMED_MONTH_FORMATS: readonly DateFormat[] = [
+  {
+    pattern: new RegExp(`^([A-Za-z]+)\\.?\\s+(\\d{1,2})${ORDINAL},?\\s+(\\d{4})$`),
+    groups: { month: 1, day: 2, year: 3 },
+    render: monthDayYear,
+  },
+  {
+    pattern: new RegExp(`^(\\d{1,2})${ORDINAL}\\s+([A-Za-z]+)\\.?,?\\s+(\\d{4})$`),
+    groups: { day: 1, month: 2, year: 3 },
+    render: dayMonthYear,
+  },
+  {
+    pattern: /^([A-Za-z]+)\.?\s+(\d{4})$/,
+    groups: { month: 1, year: 2 },
+    render: monthYear,
+  },
+];
+
+/** Families are tried in order, formats within a family in order; the first match decides. */
+const DATE_FAMILIES: readonly DateFamily[] = [
+  { formats: NUMERIC_FORMATS, monthIndex: (monthText) => +monthText - 1 },
+  { formats: NAMED_MONTH_FORMATS, monthIndex: (monthText) => MONTH_INDEX[monthText.toLowerCase()] },
+];
+
 /** Shifts a recognized date string by `days`, preserving its written format. */
 export function shiftDate(text: string, days: number): string | null {
-  let m: RegExpMatchArray | null;
-
-  if ((m = text.match(/^(\d{4})-(\d{2})-(\d{2})$/))) {
-    const d = shifted(+m[1], +m[2] - 1, +m[3], days);
-    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  for (const family of DATE_FAMILIES) {
+    for (const format of family.formats) {
+      const match = text.match(format.pattern);
+      if (!match) continue;
+      const month = family.monthIndex(match[format.groups.month]);
+      if (month === undefined) return null;
+      const yearText = match[format.groups.year];
+      const year = yearText.length === 2 ? 2000 + +yearText : +yearText;
+      const day = format.groups.day === undefined ? 15 : +match[format.groups.day];
+      return format.render(shifted(year, month, day, days), match);
+    }
   }
-
-  if ((m = text.match(/^(\d{1,2})([/-])(\d{1,2})\2(\d{2}|\d{4})$/))) {
-    const year = m[4].length === 2 ? 2000 + +m[4] : +m[4];
-    const d = shifted(year, +m[1] - 1, +m[3], days);
-    const yy = m[4].length === 2 ? pad(d.getUTCFullYear() % 100) : String(d.getUTCFullYear());
-    const keepPad = m[1].length === 2;
-    const mm = keepPad ? pad(d.getUTCMonth() + 1) : String(d.getUTCMonth() + 1);
-    const dd = keepPad ? pad(d.getUTCDate()) : String(d.getUTCDate());
-    return `${mm}${m[2]}${dd}${m[2]}${yy}`;
-  }
-
-  if ((m = text.match(/^([A-Za-z]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})$/))) {
-    const month = MONTH_INDEX[m[1].toLowerCase()];
-    if (month === undefined) return null;
-    const d = shifted(+m[3], month, +m[2], days);
-    return `${monthLike(m[1], d.getUTCMonth())} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
-  }
-
-  if ((m = text.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\.?,?\s+(\d{4})$/))) {
-    const month = MONTH_INDEX[m[2].toLowerCase()];
-    if (month === undefined) return null;
-    const d = shifted(+m[3], month, +m[1], days);
-    return `${d.getUTCDate()} ${monthLike(m[2], d.getUTCMonth())} ${d.getUTCFullYear()}`;
-  }
-
-  if ((m = text.match(/^([A-Za-z]+)\.?\s+(\d{4})$/))) {
-    const month = MONTH_INDEX[m[1].toLowerCase()];
-    if (month === undefined) return null;
-    const d = shifted(+m[2], month, 15, days);
-    return `${monthLike(m[1], d.getUTCMonth())} ${d.getUTCFullYear()}`;
-  }
-
   return null;
 }
 
