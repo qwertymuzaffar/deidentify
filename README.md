@@ -119,6 +119,28 @@ The model runs locally through Transformers.js (WASM/WebGPU in the browser, ONNX
 
 Two honest notes. First, structured identifiers (dates, phones, SSNs, MRNs, ...) score 1.000 in both modes *because the corpus uses formats the rules were written for* - treat those rows as a regression suite, not a real-world guarantee. Second, the NER "precision" cost is mostly the model flagging cities and facility names (`Springfield, IL`, `Fairfax Hospital`) that the synthetic ground truth does not label - geographic subdivisions are Safe Harbor identifiers, so those are often correct catches. Run the bench on your own de-identified samples for numbers that matter to you.
 
+## Expert-determination summary
+
+The expert-determination route needs, per document, what was found and how identifying the combination is. `summarize` takes the note or the spans you already have and returns counts and distinct values per category, the direct identifiers, the quasi-identifier groups present (dates, geography, ages) and whether they co-occur, and a coarse risk band with the rules behind it. `renderSummary` turns that into Markdown for a review queue.
+
+```ts
+import { renderSummary, summarize } from 'deidentify';
+
+const summary = summarize(note); // or summarize(spans) for spans from detectPhiAsync
+// {
+//   counts: { name: 3, date: 2, zip: 1, ... every category, zero when absent },
+//   distinct: { name: 2, ... },
+//   present: ['name', 'zip', 'date'],
+//   direct: ['name'], quasi: ['date', 'geography'], cooccurring: true,
+//   risk: 'high',
+//   reasons: ['direct identifiers present: name (3)', 'quasi-identifiers co-occur: dates, geography'],
+// }
+
+console.log(renderSummary(summary, { title: 'Note 42' }));
+```
+
+Risk is `high` when any direct identifier remains or dates, geography and ages all co-occur, `medium` when two quasi-identifier groups co-occur, and `low` otherwise. The bands describe the document as detected: run it on the original to size the review, or on the spans that survived your allow lists to see what still needs a human. It is a triage aid for the expert, not the determination itself - see "What this is not" below.
+
 ## API
 
 | Export | Description |
@@ -130,6 +152,8 @@ Two honest notes. First, structured identifiers (dates, phones, SSNs, MRNs, ...)
 | `detectPhiAsync / redactAsync / pseudonymizeAsync(text, ner, options?)` | Same, merging spans from an async recognizer |
 | `applyReplacements(text, spans, fn)` | Rewrite text from spans with output offsets |
 | `shiftDate(text, days)` | Format-preserving date shift helper |
+| `summarize(note | spans, options?)`, `summarizeAsync(note, ner, options?)` | Per-document counts, quasi-identifier co-occurrence, coarse risk band with reasons |
+| `renderSummary(summary, { title? })` | The summary as Markdown for review queues |
 
 ### Options
 
@@ -151,7 +175,6 @@ Overlapping candidates resolve by confidence, then length; touching spans of one
 
 ## Roadmap
 
-- Expert-determination helpers: per-document identifier counts and risk summaries
 - Browser demo with the NER layer running on WebGPU
 
 ## License
