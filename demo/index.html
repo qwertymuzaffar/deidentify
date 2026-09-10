@@ -68,7 +68,7 @@
           <button class="primary" id="run">De-identify</button>
           <span class="status" id="status">Ready.</span>
         </div>
-        <p class="hint">The sample is synthetic. Unlabeled names in prose ("his daughter Emily Smith") and place names are what the rules miss and the NER layer adds - NER spans get a dashed outline.</p>
+        <p class="hint">The sample is synthetic. Unlabeled names in prose ("his daughter Emily Smith") and place names are what the rules miss and the NER layer adds - NER spans get a dashed outline. Credentials in the signature block (MD, RN, ...) are let through by a section-scoped rule, so the model reading "MD" as a place does not count; hover a span to see its section.</p>
       </section>
       <div class="grid" style="margin-top: 16px">
         <section class="card">
@@ -155,7 +155,8 @@ Signed by: Robert Chen, MD on 2024-02-05`;
         let cursor = 0;
         for (const span of spans) {
           html += escape(note.slice(cursor, span.start));
-          const title = `${span.category} · ${span.source} · ${span.confidence.toFixed(2)} · [${span.start}, ${span.end})`;
+          const section = span.meta?.section ? ` · ${span.meta.section}` : '';
+          const title = `${span.category} · ${span.source} · ${span.confidence.toFixed(2)} · [${span.start}, ${span.end})${section}`;
           html += `<mark class="phi" data-category="${span.category}" data-source="${span.source === 'ner' ? 'ner' : 'rule'}" title="${title}">${escape(span.text)}</mark>`;
           cursor = span.end;
         }
@@ -170,6 +171,13 @@ Signed by: Robert Chen, MD on 2024-02-05`;
         );
         return `<table><thead><tr><th>Category</th><th>Text</th><th>Start</th><th>End</th><th>Confidence</th><th>Source</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
       }
+
+      // Credentials after the signing clinician's name are not identifiers, but
+      // the NER model reads "MD" as a place. A section-scoped allow list keeps
+      // that to the signature block; the rest of the note is untouched.
+      const OPTIONS = {
+        sections: { rules: { signature: { allow: ['MD', 'DO', 'RN', 'NP', 'PA', 'PA-C', 'PhD', 'MBBS', 'FACP'] } } },
+      };
 
       async function run() {
         const note = byId('note').value;
@@ -186,9 +194,9 @@ Signed by: Robert Chen, MD on 2024-02-05`;
             const modelSpans = await ner(note); // run the model once, reuse its spans for every step below
             recognizer = async () => modelSpans;
           }
-          const spans = await detectPhiAsync(note, recognizer);
-          const redacted = await redactAsync(note, recognizer);
-          const pseudonymized = await pseudonymizeAsync(note, recognizer);
+          const spans = await detectPhiAsync(note, recognizer, OPTIONS);
+          const redacted = await redactAsync(note, recognizer, OPTIONS);
+          const pseudonymized = await pseudonymizeAsync(note, recognizer, OPTIONS);
           byId('highlighted').innerHTML = highlight(note, spans);
           byId('redacted').textContent = redacted.text;
           byId('pseudonymized').textContent = pseudonymized.text;
