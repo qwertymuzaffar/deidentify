@@ -51,7 +51,8 @@ function mergeTouching(spans: PhiSpan[]): PhiSpan[] {
   return out;
 }
 
-function isAllowed(text: string, allow: readonly (string | RegExp)[]): boolean {
+/** True when `text` matches an allow-list entry: strings case-insensitively, RegExps by test. */
+export function isAllowed(text: string, allow: readonly (string | RegExp)[]): boolean {
   return allow.some((entry) =>
     typeof entry === 'string' ? entry.toLowerCase() === text.toLowerCase() : entry.test(text),
   );

@@ -125,9 +125,10 @@ export const vehicles = make('vehicles', (text) => [
 const TOKEN = "[A-Z](?=[A-Za-z'\\-]*[a-z])[A-Za-z'\\-]+";
 const INITIAL = '[A-Z]\\.';
 const PART = `(?:${INITIAL}|${TOKEN})`;
-const HONORIFIC = '(?:Mr|Mrs|Ms|Miss|Mx|Dr|Prof)\\.?\\s+';
-// John Smith / John A. Smith / Smith, John
-const PERSON = `${TOKEN}(?:,\\s+${TOKEN})?(?:\\s+${PART}){0,2}`;
+const HONORIFIC = '(?:Mr|Mrs|Ms|Miss|Mx|Dr|Prof)\\.?[ \\t]+';
+// John Smith / John A. Smith / Smith, John - parts stay on one line so a name
+// never runs into the header on the next line
+const PERSON = `${TOKEN}(?:,[ \\t]+${TOKEN})?(?:[ \\t]+${PART}){0,2}`;
 
 export const names = make('names', (text) => [
   // Dr. Jane Smith -> flags "Jane Smith", keeps the honorific

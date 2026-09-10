@@ -1,5 +1,7 @@
 import { BUILTIN_DETECTORS } from './detectors';
 import { resolveSpans } from './merge';
+import { applySections } from './sections';
+import type { Candidate } from './sections';
 import { SurrogateContext } from './surrogates';
 import type {
   DeidOptions,
@@ -12,20 +14,27 @@ import type {
   ReplacedSpan,
 } from './types';
 
-function runDetectors(text: string, options: DeidOptions): PhiSpan[] {
+function runDetectors(text: string, options: DeidOptions): Candidate[] {
   const detectors = [...BUILTIN_DETECTORS, ...(options.detectors ?? [])];
-  return detectors.flatMap((d) => d.detect(text));
+  return detectors.flatMap((detector) => detector.detect(text).map((span) => ({ span, detector: detector.name })));
+}
+
+/** Applies the per-section rules when asked for, then resolves overlaps and the global filters. */
+function resolveCandidates(text: string, candidates: Candidate[], options: DeidOptions): PhiSpan[] {
+  const spans = options.sections ? applySections(text, candidates, options.sections) : candidates.map((candidate) => candidate.span);
+  return resolveSpans(spans, options);
 }
 
 /** Finds PHI with the built-in rules (plus any custom detectors). Sync. */
 export function detectPhi(text: string, options: DeidOptions = {}): PhiSpan[] {
-  return resolveSpans(runDetectors(text, options), options);
+  return resolveCandidates(text, runDetectors(text, options), options);
 }
 
 /** Like detectPhi, additionally merging spans from an async recognizer (NER). */
 export async function detectPhiAsync(text: string, ner: NerFn, options: DeidOptions = {}): Promise<PhiSpan[]> {
-  const [ruleSpans, nerSpans] = await Promise.all([runDetectors(text, options), ner(text)]);
-  return resolveSpans([...ruleSpans, ...nerSpans], options);
+  const nerSpans = await ner(text);
+  const nerCandidates = nerSpans.map((span) => ({ span, detector: 'ner' }));
+  return resolveCandidates(text, [...runDetectors(text, options), ...nerCandidates], options);
 }
 
 /** Rewrites text by replacing each span, tracking offsets into the output. */
