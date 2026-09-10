@@ -66,6 +66,32 @@ The 18 Safe Harbor identifier classes (45 CFR 164.514(b)(2)), mapped to categori
 
 Unlabeled names in running prose ("Spoke with Maria Garcia about...") are the known limit of rules - that is what the NER layer is for.
 
+## Sections
+
+Clinical notes have structure, and the rules can follow it. `detectSections` finds the common headers - Subjective / Objective / Assessment / Plan (also `S:`, `O:`, `A:`, `P:`), HPI, PMH, Medications, Allergies, Social History, Family History, and the signature block - at the start of a line, in colon or line form, with exact offsets. The `sections` option then scopes detection per section: keep the signing clinician readable, skip the medication list, or run only the date rules in one block.
+
+```ts
+import { detectSections, redact } from 'deidentify';
+
+detectSections(note).map((section) => section.name);
+// ['other', 'subjective', 'objective', 'assessment', 'signature']
+// sections tile the note: each has start/end offsets and the header as written
+
+const { text, spans } = redact(note, {
+  sections: {
+    rules: {
+      signature: { skip: ['name'] },        // "Signed by: Robert Chen, MD" stays readable
+      medications: { enabled: false },      // drug names are not PHI; skip the block
+      '*': { allow: ['Fairfax Hospital'] }, // every section without its own rule
+    },
+  },
+});
+
+spans[0].meta?.section; // 'other', 'subjective', ... on every span
+```
+
+`sections: true` only annotates `meta.section`. In a rule, `detectors` (run only these) and `skip` (never these) take detector names - `names`, `dates`, `phones`, ..., `ner`, or a custom detector's name - or categories such as `name`; `allow` is a section-local allow list; `enabled: false` turns a section off. A note without headers is one `other` section, and `detect` accepts your own boundary function when the notes follow a template the built-in headers do not cover.
+
 ## On-device NER
 
 ```bash
@@ -98,6 +124,7 @@ Two honest notes. First, structured identifiers (dates, phones, SSNs, MRNs, ...)
 | Export | Description |
 |---|---|
 | `detectPhi(text, options?)` | Spans from the built-in rules (sync) |
+| `detectSections(text)` | Clinical-note sections (SOAP, HPI, PMH, ..., signature) with offsets |
 | `redact(text, options?)` | Placeholder replacement, default `[CATEGORY]` |
 | `pseudonymize(text, options?)` | Consistent surrogates + date shifting; returns the key map |
 | `detectPhiAsync / redactAsync / pseudonymizeAsync(text, ner, options?)` | Same, merging spans from an async recognizer |
@@ -112,6 +139,7 @@ Two honest notes. First, structured identifiers (dates, phones, SSNs, MRNs, ...)
 | `allow` | Strings or RegExps that must never be flagged (hospital names, drug names) |
 | `detectors` | Custom `{ name, detect(text) }` detectors merged with the rules |
 | `minConfidence` | Drop spans below a confidence |
+| `sections` | `true` to annotate `meta.section`, or `{ rules, detect }` to scope detectors, skips and allow lists per section |
 | `placeholder(category, span)` | Custom redaction text (`redact`) |
 | `dateShiftDays` | Fixed date offset (`pseudonymize`; default random 1-365, returned) |
 
@@ -123,7 +151,6 @@ Overlapping candidates resolve by confidence, then length; touching spans of one
 
 ## Roadmap
 
-- Clinical-note structure awareness (SOAP sections) for section-scoped rules
 - Expert-determination helpers: per-document identifier counts and risk summaries
 - Browser demo with the NER layer running on WebGPU
 

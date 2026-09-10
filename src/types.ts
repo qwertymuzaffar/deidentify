@@ -39,6 +39,58 @@ export interface PhiSpan {
   confidence: number;
   /** Which detector produced it. */
   source: string;
+  /** Extra context, e.g. the section the span starts in when the `sections` option is used. */
+  meta?: PhiMeta;
+}
+
+export interface PhiMeta {
+  /** Set when detection ran with the `sections` option. */
+  section?: SectionName;
+}
+
+/** Canonical names of the clinical-note sections `detectSections` recognizes. */
+export type SectionName =
+  | 'subjective'
+  | 'objective'
+  | 'assessment'
+  | 'plan'
+  | 'hpi'
+  | 'pmh'
+  | 'medications'
+  | 'allergies'
+  | 'social-history'
+  | 'family-history'
+  | 'signature'
+  | 'other';
+
+/** A region of a note. Sections tile the note: offsets index the original text exactly. */
+export interface NoteSection {
+  name: SectionName;
+  /** The header as written in the note, or null for text before the first header (or a note without headers). */
+  header: string | null;
+  /** Inclusive offset of the section's first character (the header line). */
+  start: number;
+  /** Exclusive offset where the next section starts, or the text length. */
+  end: number;
+}
+
+/** How detection behaves inside one section. */
+export interface SectionRule {
+  /** false skips detection in the section entirely (default true). */
+  enabled?: boolean;
+  /** Run only these here: detector names (`names`, `dates`, ..., `ner`, a custom detector's name) or categories. */
+  detectors?: readonly string[];
+  /** Never run these here: detector names or categories. */
+  skip?: readonly string[];
+  /** Terms that must not be flagged inside this section only. */
+  allow?: readonly (string | RegExp)[];
+}
+
+export interface SectionsOption {
+  /** Section boundaries; default `detectSections`. */
+  detect?: (text: string) => NoteSection[];
+  /** Rules by section name; `'*'` applies to every section without its own entry. */
+  rules?: Partial<Record<SectionName | '*', SectionRule>>;
 }
 
 /** A detector scans text and returns candidate spans (may overlap others). */
@@ -59,6 +111,11 @@ export interface DeidOptions {
   detectors?: readonly Detector[];
   /** Drop spans below this confidence (default 0). */
   minConfidence?: number;
+  /**
+   * Split the note into sections (`detectSections` by default) and scope
+   * detection per section; `true` only annotates `meta.section`.
+   */
+  sections?: boolean | SectionsOption;
 }
 
 export interface RedactOptions extends DeidOptions {

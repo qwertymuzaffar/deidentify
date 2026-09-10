@@ -9,6 +9,7 @@ export {
 } from './deid';
 export { BUILTIN_DETECTORS } from './detectors';
 export { resolveSpans } from './merge';
+export { detectSections } from './sections';
 export { shiftDate } from './surrogates';
 export { PHI_CATEGORIES } from './types';
 export type {
@@ -16,10 +17,15 @@ export type {
   DeidResult,
   Detector,
   NerFn,
+  NoteSection,
   PhiCategory,
+  PhiMeta,
   PhiSpan,
   PseudonymizeOptions,
   PseudonymizeResult,
   RedactOptions,
   ReplacedSpan,
+  SectionName,
+  SectionRule,
+  SectionsOption,
 } from './types';
