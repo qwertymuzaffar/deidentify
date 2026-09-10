@@ -1,6 +1,6 @@
 {
   "name": "deidentify",
-  "version": "0.2.0",
+  "version": "0.1.1",
   "description": "PHI de-identification for TypeScript - detect, redact, and pseudonymize the HIPAA Safe Harbor identifiers in clinical text with exact offsets. Zero dependencies; optional on-device NER.",
   "keywords": [
     "phi",
